@@ -324,10 +324,11 @@ if [ "$NETCONFIG_DNS_FORWARDER" != "resolver" -a \
         sd_in_lns=0
         for ns in "${lns[@]}" ; do
             case "$ns" in
-            127.0.0.53) sd_in_lns=1
-                        break
-                        ;;
-            *)          ;;
+            127.0.0.53)
+                sd_in_lns=1
+                break
+            ;;
+            *)  ;;
             esac
         done
         test "$sd_in_lns" -eq 0 && lns=(127.0.0.53 "${lns[@]}")
