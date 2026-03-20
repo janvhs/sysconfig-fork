@@ -316,10 +316,18 @@ if [ "$NETCONFIG_DNS_FORWARDER" != "resolver" -a \
         unset $var
         eval "rns_$idx='${rns[*]}'"
     done
+
     # fallback requires a localhost address, set when needed
     if  test "$NETCONFIG_DNS_FORWARDER_FALLBACK" = yes ;
     then
-        test ${#lns[@]} -le 0 && lns=(127.0.0.1)
+        if test "x$NETCONFIG_DNS_FORWARDER" = "xsystemd-resolved" ;
+        then
+        # systemd-resolved doesn't bind to localhost, but to another private
+        # address on the loopback device
+            test ${#lns[@]} -le 0 && lns=(127.0.0.53)
+        else
+            test ${#lns[@]} -le 0 && lns=(127.0.0.1)
+        fi
     fi
     # apply localhost addresses + fallback name servers
     if  test ${#lns[@]} -gt 0 ; then
