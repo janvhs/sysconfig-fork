@@ -197,12 +197,12 @@ Empty string defaults to "resolver", that is also the default setting.
 See also \fBNETCONFIG MODULES\fR section for more information.
 .TP
 .B NETCONFIG_DNS_FORWARDER_FALLBACK
-When enabled (default) in forwarder mode ("bind", "dnsmasq"), netconfig
-writes an explicit localhost nameserver address to the /etc/resolv.conf,
-followed by the policy resolved name server list as fallback for the
-moments, when the local forwarder is stopped. Otherwise, the fallback is
-written only, when the NETCONFIG_DNS_STATIC_SERVERS variable contains an
-localhost address.
+When enabled (default) in forwarder mode ("bind", "dnsmasq", "systemd"),
+netconfig writes an explicit localhost nameserver address to the
+/etc/resolv.conf, followed by the policy resolved name server list as
+fallback for the moments, when the local forwarder is stopped. Otherwise,
+the fallback is written only, when the NETCONFIG_DNS_STATIC_SERVERS
+variable contains an localhost address.
 .TP
 .B NETCONFIG_DNS_STATIC_SEARCHLIST
 List of DNS domain names used for host-name lookup.
