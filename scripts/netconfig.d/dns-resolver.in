@@ -353,7 +353,14 @@ elif [ $RET -eq 2 ]; then
 fi
 
 # here we should restart services if needed
-# => not applicable to reload anything
+# - glibc resolver   => not applicable to reload anything
+# - systemd resolved => inform systemd-resolved (if running) about changes we
+#                       made to /etc/resolv.conf …
+case $NETCONFIG_DNS_FORWARDER in
+systemd|resolver)
+    systemctl try-reload-or-restart systemd-resolved.service &>/dev/null || :
+;;
+esac
 
 exit 0;
 
