@@ -32,6 +32,7 @@ if test "$UID" != "0" -a "$USER" != root -a -z "$ROOT" ; then
     exit 1
 fi
 
+resolvectl="/usr/bin/resolvectl"
 SYSFSDIR="/sys/class/net"
 STATEDIR="/run/netconfig"
 debug "$PROGNAME module called"
@@ -45,85 +46,85 @@ unset DNS_SERVERS ${!DNS_SERVERS_*}
 # FUNCTIONS
 # *********************
 
-function message_resolved()
+function list_find()
 {
-    local static_fallback="$1"
-    local fallback_searchlist="$2"
-    local fallback_servers="$3"
-
-    debug "exec message_resolved: static_fallback: ${static_fallback}"
-    if ! systemctl --quiet is-active systemd-resolved.service &>/dev/null ; then
-        debug "    message_resolved: systemd-resolved is not running"
-        debug "exit message_resolved"
-        return 0;
-    fi
-
-    local managed_interfaces=($(resolvectl -j status | jq -r '.[] | select(has("ifname") and any(.scopes[]?; .protocol == "dns")) | .ifname'))
-
-    for ifname in "${managed_interfaces[@]}"; do
-        local dns_servers=()
-        local dns_searchlist=()
-        for idx in {0..2}; do
-            if [ "$static_fallback" -eq 1 ] && [ "${idx}" -eq 2 ] \
-                                            && [ "${#dns_servers[@]}" -eq 0 ]
-            then
-                DNS_SERVERS_2="$DNS_SERVERS_2 $fallback_servers"
-            fi
-            local var_server_global="DNS_SERVERS_${idx}"
-            dns_servers+=(${!var_server_global})
-            local var_server_local="DNS_SERVERS_${ifname}_${idx}"
-            dns_servers+=(${!var_server_local})
-
-            if [ "$static_fallback" -eq 1 ] && [ "${idx}" -eq 2 ] \
-                                            && [ "${#dns_searchlist[@]}" -eq 0 ]
-            then
-                DNS_SEARCHLIST_2="$DNS_SEARCHLIST_2 $fallback_searchlist"
-            fi
-            local var_searchlist_global="DNS_SEARCHLIST_${idx}"
-            dns_searchlist+=(${!var_searchlist_global})
-            local var_searchlist_local="DNS_SEARCHLIST_${ifname}_${idx}"
-            dns_searchlist+=(${!var_searchlist_local})
-        done
-
-        debug "    message_resolved: dns ${ifname} => ${dns_servers[*]}"
-        resolvectl dns "${ifname}" "${dns_servers[@]}" || return 1
-
-        debug "    message_resolved: domain ${ifname} => ${dns_searchlist[*]}"
-        resolvectl domain "${ifname}" "${dns_searchlist[@]}" || return 1
+    local item want="$1" ; shift
+    for item in "$@" ; do
+        [ X"$want" = X"$item" ] && return 0
     done
+    return 1
+}
+function list_uniq()
+{
+    local item list=()
+    for item in "$@" ; do
+        list_find "$item" "${list[@]}" && continue
+        list+=("$item")
+    done
+    echo "${list[@]}"
+}
 
-    debug "exit message_resolved"
+function manage_systemd_resolved()
+{
+    local iflist=("$@")
+
+    debug "exec manage_systemd_resolved: ${iflist[@]}"
+    for ((i=0;i<${#iflist[@]};i++)) {
+        local ifname="${iflist[$i]}"
+        local ifservers=()
+        local ifdomains=()
+        for ((s=0;s<3;s++)) ; do
+            local server_var="DNS_SERVERS_${i}_${s}"
+            local domain_var="DNS_SEARCHLIST_${i}_${s}"
+            ifservers=($(list_uniq "${ifservers[@]}" ${!server_var}))
+            ifdomains=($(list_uniq "${ifdomains[@]}" ${!domain_var}))
+        done
+        if test ${#ifservers[@]} -gt 0 ; then
+            debug "     resolvectl dns $ifname ${ifservers[@]}"
+            $resolvectl dns "$ifname" "${ifservers[@]}"
+        else
+            # all leases removed
+            debug "     resolvectl dns $ifname ''"
+            $resolvectl dns "$ifname" ""
+        fi
+        if test ${#ifdomains[@]} -gt 0 ; then
+            debug "     resolvectl domain $ifname ${ifdomains[@]}"
+            $resolvectl domain "$ifname" "${ifdomains[@]}"
+        else
+            debug "     resolvectl domain $ifname ''"
+            $resolvectl domain "$ifname" ""
+        fi
+    }
+    debug "exit manage_systemd_resolved: ${iflist[@]}"
+    return 0
 }
 
 function get_dns_settings()
 {
-    local cfg="$1"
-    test "x$cfg" = x && return 1
-
-    local ifname="$2"
-    test "x$ifname" = x && return 1
-
-    shift 2
+    local ifn="$1" ; shift
+    local cfg="$1" ; shift
+    local ifname="$1" ; shift
+    test "x$ifn" != x -a "x$cfg" != x -a "x$ifname" != x || return 1
 
     local SERVICE DNSSEARCH DNSDOMAIN DNSSERVERS
     local var idx DNS_SEARCHLIST DNS_SERVERS
 
-    debug "exec get_dns_settings: $cfg"
+    debug "exec get_dns_settings: $pfx $cfg for $ifname"
 
     get_variable "SERVICE" "$cfg"
     idx=`get_ranking_idx "$SERVICE" "$@"`
     debug "     get_dns_settings: service '$SERVICE' => rank '$idx'"
 
     # Interface specific search list
-    var="DNS_SEARCHLIST_${ifname}_${idx}"
+    var="DNS_SEARCHLIST_${ifn}_${idx}"
     DNS_SEARCHLIST=(${!var})
     get_variable "DNSSEARCH" "$cfg"
     if [ "x$DNSSEARCH" != "x" ]; then
-        DNS_SEARCHLIST=(${DNS_SEARCHLIST[@]} $DNSSEARCH)
+        DNS_SEARCHLIST=($(list_uniq "${DNS_SEARCHLIST[@]}" "$DNSSEARCH"))
     else
         get_variable "DNSDOMAIN" "$cfg"
         if [ "x$DNSDOMAIN" != "x" ]; then
-            DNS_SEARCHLIST=(${DNS_SEARCHLIST[@]} $DNSDOMAIN)
+            DNS_SEARCHLIST=($(list_uniq "${DNS_SEARCHLIST[@]}" "$DNSDOMAIN"))
         else
             local H=$HOSTNAME
             local HOSTNAME
@@ -131,7 +132,7 @@ function get_dns_settings()
             HOSTNAME="${HOSTNAME%.}"
             if [ "x$HOSTNAME" != "x" -a "x${HOSTNAME#*.}" != "x" \
                  -a "${HOSTNAME#*.}" != "${HOSTNAME}" ] ; then
-                DNS_SEARCHLIST=(${DNS_SEARCHLIST[@]} "${HOSTNAME#*.}")
+                DNS_SEARCHLIST=($(list_uniq "${DNS_SEARCHLIST[@]}" "${HOSTNAME#*.}"))
             fi
             HOSTNAME=$H
         fi
@@ -140,41 +141,81 @@ function get_dns_settings()
     eval "${var}='${DNS_SEARCHLIST[@]}'"
     debug "     get_dns_settings: ${var}='${!var}'"
 
-    var="DNS_SERVERS_${ifname}_${idx}"
+    # Interface specific server list
+    var="DNS_SERVERS_${ifn}_${idx}"
     DNS_SERVERS=(${!var})
     get_variable "DNSSERVERS" "$cfg"
     if [ "x$DNSSERVERS" != "x" ]; then
-        DNS_SERVERS=(${DNS_SERVERS[@]} $DNSSERVERS)
+        DNS_SERVERS=($(list_uniq "${DNS_SERVERS[@]}" "$DNSSERVERS"))
     fi
     unset DNSSERVERS
     eval "${var}='${DNS_SERVERS[@]}'"
     debug "     get_dns_settings: ${var}='${!var}'"
 
-    debug "exit get_dns_settings: $cfg"
+    debug "exit get_dns_settings: $pfx $cfg for $ifname"
     return 0
 }
 
 function manage_interfaceconfig()
 {
-    local dir="$1" ; shift
-    local ifname="${dir##*/}"
-    test "x$dir" != x -a -d "$dir" || return 1
+    local ifvar="$1" ; shift
+    local ifdir="$1" ; shift
+    local ifname="${ifdir##*/}"
+    test "x$ifvar" != x -a "x$ifdir" != x || return 1
+    test "x$ifname" != x -a -d "$ifdir"   || return 1
 
-    debug "exec manage_interfaceconfig: $dir"
-    for cfg in `ls -X -r "$dir/" 2>/dev/null`; do
-        get_dns_settings "$dir/$cfg" "$ifname" "$@"
+    # do not send per interface settings for loopback
+    test "x$ifname" != xlo                || return 0
+
+    local iflist=(${!ifvar})
+    # just in case, handle each interface once only
+    list_find "$ifname" "${iflist[@]}" && return 0
+
+    debug "exec manage_interfaceconfig: $ifdir for $ifname"
+    for cfg in `ls -X -r "$ifdir/" 2>/dev/null`; do
+        get_dns_settings ${#iflist[@]} "$ifdir/$cfg" "$ifname" "$@" || return 1
     done
-    debug "exit manage_interfaceconfig: $dir"
+    iflist+=("$ifname")
+    eval "${ifvar}='${iflist[@]}'"
+    debug "exit manage_interfaceconfig: $ifdir for $ifname"
     return 0
+}
+
+function applicable_network_service()
+{
+    local Id=`systemctl --no-pager -p Id show network.service 2>/dev/null`
+    local service=${Id#Id=}
+
+    service=${service%.service}
+    if test "X$service" = "X" ; then
+        debug "Systemd did not reported any enabled network service"
+	service=`find_current_service "network.service" 2>/dev/null`
+        service=${service%.service}
+        debug "Using '$service' as network service"
+    fi
+
+    case ${service} in
+      # with wicked as network.service, wicked and other services are
+      # passing per-service and per-interface settings to netconfig.
+      wicked)           return 0 ;;
+
+      # NetworkManager collects the settings from it's plugins and is
+      # passing the already merged settings to netconfig, processed by
+      # the dns-resolver (/etc/resolv.conf) module.
+      # It also passes the per-interface settings to systemd-resolved.
+      NetworkManager|*) return 1 ;;
+    esac
 }
 
 # *********************
 # EXECUTION STARTS HERE
 # *********************
 
-if [ "$NETCONFIG_DNS_FORWARDER" != "systemd-resolved" ]; then
-    exit 0;
-fi
+[ "x$NETCONFIG_DNS_FORWARDER" != "xsystemd-resolved" ]       && exit 0
+applicable_network_service                                   || exit 0
+
+test -x $resolvectl                                          || exit 1
+systemctl is-enabled -q systemd-resolved.service &>/dev/null || exit 1
 
 # just for the case we need the original value...
 _NETCONFIG_DNS_RANKING="$NETCONFIG_DNS_RANKING"
@@ -193,47 +234,32 @@ if [ "x$_NETCONFIG_DNS_POLICY" = "x" ]; then
     exit 0;
 fi
 
-sf=0
 _g=1
+managed_interfaces=""
 # disable filename glob expansion if needed
 shopt -o -q noglob || _g=0
 shopt -o -s noglob
 for POL in $_NETCONFIG_DNS_POLICY; do
     shopt -o -u noglob
     case "$POL" in
-    (NetworkManager)
-        # NetworkManager communicates with systemd-resolved by default
-        break
-    ;;
-    (STATIC)
-        debug "Keep Static"
-        DNS_SEARCHLIST_1="$DNS_SEARCHLIST_1 $NETCONFIG_DNS_STATIC_SEARCHLIST"
-        DNS_SERVERS_1="$DNS_SERVERS_1 $NETCONFIG_DNS_STATIC_SERVERS"
-    ;;
-    (STATIC_FALLBACK)
-        debug "Static Fallback"
-        sf=1
+    (NetworkManager|STATIC|STATIC_FALLBACK)
+        # NetworkManager sends per interface settings to systemd-resolved by default,
+        # static settings are handled by the dns-resolver netconfig module.
     ;;
     (*)
+        # Get current set of per-interface settings 
         debug "Other: $POL"
         for IFDIR in $ROOT$STATEDIR/$POL; do
             test -d "$IFDIR" -a \
                  -d "$SYSFSDIR/${IFDIR##*/}" || continue
             # proceed every interface we find with this match
-            manage_interfaceconfig "$IFDIR" "$_NETCONFIG_DNS_RANKING"
+            manage_interfaceconfig managed_interfaces "$IFDIR" "$_NETCONFIG_DNS_RANKING"
         done
     ;;
     esac
 done
 [ $_g -eq 0 ] && shopt -o -u noglob
 
-if ! message_resolved "$sf" "$NETCONFIG_DNS_STATIC_SEARCHLIST" \
-    "$NETCONFIG_DNS_STATIC_SERVERS"
-then
-    exit 1
-fi
-
-# here we should restart services if needed
-systemctl try-reload-or-restart systemd-resolved.service &>/dev/null
+manage_systemd_resolved $managed_interfaces || exit 1
 
 exit 0
