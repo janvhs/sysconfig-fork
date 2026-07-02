@@ -42,6 +42,8 @@ debug "$PROGNAME module called"
 unset DNS_SEARCHLIST ${!DNS_SEARCHLIST_*}
 unset DNS_SERVERS ${!DNS_SERVERS_*}
 
+MANAGED_INTERFACES=""
+
 # *********************
 # FUNCTIONS
 # *********************
@@ -235,7 +237,6 @@ if [ "x$_NETCONFIG_DNS_POLICY" = "x" ]; then
 fi
 
 _g=1
-managed_interfaces=""
 # disable filename glob expansion if needed
 shopt -o -q noglob || _g=0
 shopt -o -s noglob
@@ -253,7 +254,7 @@ for POL in $_NETCONFIG_DNS_POLICY; do
             test -d "$IFDIR" -a \
                  -d "$SYSFSDIR/${IFDIR##*/}" || continue
             # proceed every interface we find with this match
-            manage_interfaceconfig managed_interfaces "$IFDIR" "$_NETCONFIG_DNS_RANKING"
+            manage_interfaceconfig MANAGED_INTERFACES "$IFDIR" "$_NETCONFIG_DNS_RANKING"
         done
     ;;
     esac
@@ -264,6 +265,6 @@ else
     shopt -o -s noglob
 fi
 
-manage_systemd_resolved $managed_interfaces || exit 1
+manage_systemd_resolved $MANAGED_INTERFACES || exit 1
 
 exit 0
