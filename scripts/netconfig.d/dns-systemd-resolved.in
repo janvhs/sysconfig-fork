@@ -258,7 +258,11 @@ for POL in $_NETCONFIG_DNS_POLICY; do
     ;;
     esac
 done
-[ $_g -eq 0 ] && shopt -o -u noglob
+if [ $_g -eq 0 ] ; then
+    shopt -o -u noglob
+else
+    shopt -o -s noglob
+fi
 
 manage_systemd_resolved $managed_interfaces || exit 1
 
