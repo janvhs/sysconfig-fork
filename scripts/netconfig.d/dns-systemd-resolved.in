@@ -216,8 +216,20 @@ function applicable_network_service()
 [ "x$NETCONFIG_DNS_FORWARDER" != "xsystemd-resolved" ]       && exit 0
 applicable_network_service                                   || exit 0
 
-test -x $resolvectl                                          || exit 1
-systemctl is-enabled -q systemd-resolved.service &>/dev/null || exit 1
+if ! [ -e "$resolvectl" ] ; then
+    debug "$resolvectl does not exist"
+    exit 1
+fi
+
+if ! [ -x "$resolvectl" ] ; then
+    debug "$resolvectl is not executable"
+    exit 1
+fi
+
+if ! systemctl -q is-enabled systemd-resolved.service ; then
+    debug 'The service "systemd-resolved.service" is not enabled'
+    exit 1
+fi
 
 # just for the case we need the original value...
 _NETCONFIG_DNS_RANKING="$NETCONFIG_DNS_RANKING"
