@@ -202,30 +202,27 @@ function manage_systemd_resolved()
 
 function get_dns_settings()
 {
-    local ifn="$1" ; shift
     local cfg="$1" ; shift
     local ifname="$1" ; shift
-    test "x$ifn" != x -a "x$cfg" != x -a "x$ifname" != x || return 1
+    test -n "$cfg" -a \
+         -n "$ifname" || return 0
 
     local SERVICE DNSSEARCH DNSDOMAIN DNSSERVERS
-    local var idx DNS_SEARCHLIST DNS_SERVERS
+    local idx DNS_SEARCHLIST DNS_SERVERS
 
-    debug "exec get_dns_settings: $pfx $cfg for $ifname"
+    debug "exec get_dns_settings: $cfg for $ifname"
 
     get_variable "SERVICE" "$cfg"
     idx=`get_ranking_idx "$SERVICE" "$@"`
     debug "     get_dns_settings: service '$SERVICE' => rank '$idx'"
 
-    # Interface specific search list
-    var="DNS_SEARCHLIST_${ifn}_${idx}"
-    DNS_SEARCHLIST=(${!var})
     get_variable "DNSSEARCH" "$cfg"
     if [ "x$DNSSEARCH" != "x" ]; then
-        DNS_SEARCHLIST=($(list_uniq "${DNS_SEARCHLIST[@]}" "$DNSSEARCH"))
+        read -a DNS_SEARCHLIST <<< "$DNSSEARCH"
     else
         get_variable "DNSDOMAIN" "$cfg"
         if [ "x$DNSDOMAIN" != "x" ]; then
-            DNS_SEARCHLIST=($(list_uniq "${DNS_SEARCHLIST[@]}" "$DNSDOMAIN"))
+            read -a DNS_SEARCHLIST <<< "$DNSDOMAIN"
         else
             local H=$HOSTNAME
             local HOSTNAME
@@ -233,29 +230,23 @@ function get_dns_settings()
             HOSTNAME="${HOSTNAME%.}"
             if [ "x$HOSTNAME" != "x" -a "x${HOSTNAME#*.}" != "x" \
                  -a "${HOSTNAME#*.}" != "${HOSTNAME}" ] ; then
-                DNS_SEARCHLIST=($(list_uniq "${DNS_SEARCHLIST[@]}" "${HOSTNAME#*.}"))
+                read -a DNS_SEARCHLIST <<< "${HOSTNAME#*.}"
             fi
             HOSTNAME=$H
         fi
     fi
     unset DNSSEARCH DNSDOMAIN
-    eval "${var}='${DNS_SEARCHLIST[@]}'"
-    debug "     get_dns_settings: ${var}='${!var}'"
+    dns_searchlist_add "$ifname" "$idx" "${DNS_SEARCHLIST[@]}"
 
     # Interface specific server list
-    var="DNS_SERVERS_${ifn}_${idx}"
-    DNS_SERVERS=(${!var})
     get_variable "DNSSERVERS" "$cfg"
     if [ "x$DNSSERVERS" != "x" ]; then
-        DNS_SERVERS=($(list_uniq "${DNS_SERVERS[@]}" "$DNSSERVERS"))
+        read -a DNS_SERVERS <<< "$DNSSERVERS"
     fi
     unset DNSSERVERS
-    eval "${var}='${DNS_SERVERS[@]}'"
-    debug "     get_dns_settings: ${var}='${!var}'"
+    dns_servers_add "$ifname" "$idx" "${DNS_SERVERS[@]}"
 
-    debug "exit get_dns_settings: $pfx $cfg for $ifname"
-    return 0
-}
+    debug "exit get_dns_settings: $cfg for $ifname"
 
 function manage_interfaceconfig()
 {
