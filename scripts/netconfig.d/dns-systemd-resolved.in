@@ -308,6 +308,30 @@ function applicable_network_service()
     esac
 }
 
+function handle_static_policy()
+{
+    local searchlist
+    read -a searchlist <<< "${1:-}"
+
+    local servers
+    read -a servers <<< "${2:-}"
+
+    debug "exec handle_static_policy"
+
+    for ifdir in "${ROOT}${STATEDIR}/"*; do
+        local ifname="${ifdir##*/}"
+
+        test "$ifname" != "lo" -a \
+             -d "$ifdir" -a \
+             -d "$SYSFSDIR/$ifname" || continue
+
+        dns_servers_add "$ifname" 1 "${servers[@]}"
+        dns_searchlist_add "$ifname" 1 "${searchlist[@]}"
+    done
+
+    debug "exit handle_static_policy"
+}
+
 # *********************
 # EXECUTION STARTS HERE
 # *********************
