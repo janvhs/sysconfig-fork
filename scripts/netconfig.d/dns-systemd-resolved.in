@@ -42,20 +42,65 @@ debug "$PROGNAME module called"
 unset DNS_SEARCHLIST ${!DNS_SEARCHLIST_*}
 unset DNS_SERVERS ${!DNS_SERVERS_*}
 
-MANAGED_INTERFACES=""
+declare -a MANAGED_INTERFACES
 
 # *********************
 # FUNCTIONS
 # *********************
 
+function interface_get_index()
+{
+    local ifname="$1"
+    test -n "$ifname" || return 1
+
+    test -n "$2" || retrun 1
+    declare -n idx="$2"
+
+    debug "exec interface_get_index: $ifname"
+
+    if ! idx="$(list_find "$ifname" "${MANAGED_INTERFACES[@]}")" ; then
+        return 1
+    fi
+
+    debug "exit interface_get_index: $ifname"
+
+    return 0
+}
+
+function interface_manage() {
+    local ifname="$1"
+    test -n "$ifname" || return 1
+
+    test -n "$2" || retrun 1
+    declare -n idx="$2"
+
+    debug "exec interface_manage: $ifname"
+
+    idx="${#MANAGED_INTERFACES[@]}"
+    MANAGED_INTERFACES+=("$ifname")
+
+    debug "exit interface_manage: $ifname"
+
+    return 0
+}
+
 function list_find()
 {
-    local item want="$1" ; shift
-    for item in "$@" ; do
-        [ X"$want" = X"$item" ] && return 0
+    local needle="$1" ; shift
+    local haystack=("$@")
+
+    [ 0 -eq "${#haystack[@]}" ] && return 1
+
+    for i in $(seq 0 "$(("${#haystack[@]}" - 1))"); do
+        if [ "$needle" = "${haystack["$i"]}" ] ; then
+            printf "%d\n" "$i"
+            return 0
+        fi
     done
+
     return 1
 }
+
 function list_uniq()
 {
     local item list=()
@@ -255,9 +300,15 @@ shopt -o -s noglob
 for POL in $_NETCONFIG_DNS_POLICY; do
     shopt -o -u noglob
     case "$POL" in
-    (NetworkManager|STATIC|STATIC_FALLBACK)
+    (NetworkManager|STATIC_FALLBACK)
         # NetworkManager sends per interface settings to systemd-resolved by default,
         # static settings are handled by the dns-resolver netconfig module.
+    ;;
+    (STATIC)
+        debug "Keep Static"
+        handle_static_policy \
+            "${NETCONFIG_DNS_STATIC_SEARCHLIST}" \
+            "${NETCONFIG_DNS_STATIC_SERVERS}"
     ;;
     (*)
         # Get current set of per-interface settings 
