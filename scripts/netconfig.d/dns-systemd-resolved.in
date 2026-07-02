@@ -323,6 +323,31 @@ function handle_static_policy()
     debug "exit handle_static_policy"
 }
 
+function handle_normal_policy()
+{
+    local policy="${1:-}" ; shift
+    test -n "$policy" || return 0
+
+    debug "exec handle_normal_policy: $policy"
+
+    for ifdir in "${ROOT}${STATEDIR}/"$policy; do
+        local ifname="${ifdir##*/}"
+
+        test "$ifname" != "lo" -a \
+             -d "$ifdir" -a \
+             -d "$SYSFSDIR/$ifname" || continue
+
+        for cfg in "$ifdir/"* ; do
+            test -e "$cfg" || break
+
+            get_dns_settings "$cfg" "$ifname" "$@"
+        done
+    done
+
+
+    debug "exit handle_normal_policy: $policy"
+}
+
 # *********************
 # EXECUTION STARTS HERE
 # *********************
