@@ -269,24 +269,25 @@ function get_dns_settings()
     debug "exec get_dns_settings: $cfg for $ifname"
 
     get_variable "SERVICE" "$cfg"
-    idx=`get_ranking_idx "$SERVICE" "$@"`
+    idx="$(get_ranking_idx "$SERVICE" "$@")"
     debug "     get_dns_settings: service '$SERVICE' => rank '$idx'"
 
     get_variable "DNSSEARCH" "$cfg"
     if [ "x$DNSSEARCH" != "x" ]; then
-        read -a DNS_SEARCHLIST <<< "$DNSSEARCH"
+        read -a -r DNS_SEARCHLIST <<< "$DNSSEARCH"
     else
         get_variable "DNSDOMAIN" "$cfg"
         if [ "x$DNSDOMAIN" != "x" ]; then
-            read -a DNS_SEARCHLIST <<< "$DNSDOMAIN"
+            read -a -r DNS_SEARCHLIST <<< "$DNSDOMAIN"
         else
+            # FIXME: Why only segment y xxx.yyy. ??
             local H=$HOSTNAME
             local HOSTNAME
             get_variable "HOSTNAME" "$cfg"
             HOSTNAME="${HOSTNAME%.}"
             if [ "x$HOSTNAME" != "x" -a "x${HOSTNAME#*.}" != "x" \
                  -a "${HOSTNAME#*.}" != "${HOSTNAME}" ] ; then
-                read -a DNS_SEARCHLIST <<< "${HOSTNAME#*.}"
+                read -a -r DNS_SEARCHLIST <<< "${HOSTNAME#*.}"
             fi
             HOSTNAME=$H
         fi
@@ -297,7 +298,7 @@ function get_dns_settings()
     # Interface specific server list
     get_variable "DNSSERVERS" "$cfg"
     if [ "x$DNSSERVERS" != "x" ]; then
-        read -a DNS_SERVERS <<< "$DNSSERVERS"
+        read -a -r DNS_SERVERS <<< "$DNSSERVERS"
     fi
     unset DNSSERVERS
     dns_servers_add "$ifname" "$idx" "${DNS_SERVERS[@]}"
@@ -309,13 +310,14 @@ function get_dns_settings()
 
 function applicable_network_service()
 {
-    local Id=`systemctl --no-pager -p Id show network.service 2>/dev/null`
-    local service=${Id#Id=}
+    local id=
+    id="$(systemctl --no-pager -p Id show network.service 2>/dev/null)"
+    local service=${id#Id=}
 
     service=${service%.service}
     if test "X$service" = "X" ; then
         debug "Systemd did not reported any enabled network service"
-	service=`find_current_service "network.service" 2>/dev/null`
+        service="$(find_current_service "network.service" 2>/dev/null)"
         service=${service%.service}
         debug "Using '$service' as network service"
     fi
@@ -336,10 +338,10 @@ function applicable_network_service()
 function handle_static_policy()
 {
     local searchlist
-    read -a searchlist <<< "${1:-}"
+    read -a -r searchlist <<< "${1:-}"
 
     local servers
-    read -a servers <<< "${2:-}"
+    read -a -r servers <<< "${2:-}"
 
     debug "exec handle_static_policy"
 
@@ -412,7 +414,7 @@ case "$_NETCONFIG_DNS_RANKING" in
 esac
 
 # just for the case we need the original value...
-_NETCONFIG_DNS_POLICY=`netconfig_policy "$NETCONFIG_DNS_POLICY" dns`
+_NETCONFIG_DNS_POLICY="$(netconfig_policy "$NETCONFIG_DNS_POLICY" dns)"
 if [ "x$_NETCONFIG_DNS_POLICY" = "x" ]; then
     #
     # empty policy means do not touch anything.
