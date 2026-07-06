@@ -229,19 +229,14 @@ function dns_searchlist_get()
 
 function manage_systemd_resolved()
 {
-    local iflist=("$@")
+    debug "exec manage_systemd_resolved"
 
-    debug "exec manage_systemd_resolved: ${iflist[@]}"
-    for ((i=0;i<${#iflist[@]};i++)) {
-        local ifname="${iflist[$i]}"
-        local ifservers=()
-        local ifdomains=()
-        for ((s=0;s<3;s++)) ; do
-            local server_var="DNS_SERVERS_${i}_${s}"
-            local domain_var="DNS_SEARCHLIST_${i}_${s}"
-            ifservers=($(list_uniq "${ifservers[@]}" ${!server_var}))
-            ifdomains=($(list_uniq "${ifdomains[@]}" ${!domain_var}))
-        done
+    for ifname in "${MANAGED_INTERFACES[@]}" ; do
+        declare -a ifservers
+        dns_servers_get "$ifname" 0 ifservers
+        dns_servers_get "$ifname" 1 ifservers
+        dns_servers_get "$ifname" 2 ifservers
+
         if test ${#ifservers[@]} -gt 0 ; then
             debug "     resolvectl dns $ifname ${ifservers[@]}"
             $resolvectl dns "$ifname" "${ifservers[@]}"
@@ -250,6 +245,13 @@ function manage_systemd_resolved()
             debug "     resolvectl dns $ifname ''"
             $resolvectl dns "$ifname" ""
         fi
+        unset ifservers
+
+        declare -a ifdomains
+        dns_searchlist_get "$ifname" 0 ifdomains
+        dns_searchlist_get "$ifname" 1 ifdomains
+        dns_searchlist_get "$ifname" 2 ifdomains
+
         if test ${#ifdomains[@]} -gt 0 ; then
             debug "     resolvectl domain $ifname ${ifdomains[@]}"
             $resolvectl domain "$ifname" "${ifdomains[@]}"
@@ -257,8 +259,10 @@ function manage_systemd_resolved()
             debug "     resolvectl domain $ifname ''"
             $resolvectl domain "$ifname" ""
         fi
-    }
-    debug "exit manage_systemd_resolved: ${iflist[@]}"
+        unset ifdomains
+    done
+
+    debug "exit manage_systemd_resolved"
     return 0
 }
 
@@ -479,6 +483,6 @@ else
     shopt -o -s noglob
 fi
 
-manage_systemd_resolved $MANAGED_INTERFACES || exit 1
+manage_systemd_resolved || exit 1
 
 exit 0
