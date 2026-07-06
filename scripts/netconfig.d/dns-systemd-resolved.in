@@ -32,7 +32,7 @@ if test "$UID" != "0" -a "$USER" != root -a -z "$ROOT" ; then
     exit 1
 fi
 
-resolvectl="/usr/bin/resolvectl"
+RESOLVECTL="/usr/bin/resolvectl"
 SYSFSDIR="/sys/class/net"
 STATEDIR="/run/netconfig"
 debug "$PROGNAME module called"
@@ -229,11 +229,11 @@ function manage_systemd_resolved()
 
         if test "${#ifservers[@]}" -gt 0 ; then
             debug "     resolvectl dns $ifname ${ifservers[@]}"
-            "$resolvectl" dns "$ifname" "${ifservers[@]}"
+            "$RESOLVECTL" dns "$ifname" "${ifservers[@]}"
         else
             # all leases removed
             debug "     resolvectl dns $ifname ''"
-            "$resolvectl" dns "$ifname" ""
+            "$RESOLVECTL" dns "$ifname" ""
         fi
         unset ifservers
 
@@ -244,10 +244,10 @@ function manage_systemd_resolved()
 
         if test "${#ifdomains[@]}" -gt 0 ; then
             debug "     resolvectl domain $ifname ${ifdomains[@]}"
-            "$resolvectl" domain "$ifname" "${ifdomains[@]}"
+            "$RESOLVECTL" domain "$ifname" "${ifdomains[@]}"
         else
             debug "     resolvectl domain $ifname ''"
-            "$resolvectl" domain "$ifname" ""
+            "$RESOLVECTL" domain "$ifname" ""
         fi
         unset ifdomains
     done
@@ -393,13 +393,13 @@ function handle_normal_policy()
 [ "$NETCONFIG_DNS_FORWARDER" != "systemd-resolved" ] && exit 0
 applicable_network_service                           || exit 0
 
-if ! [ -e "$resolvectl" ] ; then
-    debug "$resolvectl does not exist"
+if ! [ -e "$RESOLVECTL" ] ; then
+    debug "$RESOLVECTL does not exist"
     exit 1
 fi
 
-if ! [ -x "$resolvectl" ] ; then
-    debug "$resolvectl is not executable"
+if ! [ -x "$RESOLVECTL" ] ; then
+    debug "$RESOLVECTL is not executable"
     exit 1
 fi
 
