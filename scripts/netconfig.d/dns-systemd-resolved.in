@@ -403,9 +403,13 @@ if ! [ -x "$resolvectl" ] ; then
     exit 1
 fi
 
+if ! systemctl --quiet is-active systemd-resolved.service ; then
+    debug 'The service "systemd-resolved.service" is not active'
+    exit 1
+fi
+
 if ! systemctl -q is-enabled systemd-resolved.service ; then
     debug 'The service "systemd-resolved.service" is not enabled'
-    exit 1
 fi
 
 # just for the case we need the original value...
