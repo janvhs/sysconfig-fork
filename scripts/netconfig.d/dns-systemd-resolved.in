@@ -407,12 +407,7 @@ for POL in $_NETCONFIG_DNS_POLICY; do
     (*)
         # Get current set of per-interface settings 
         debug "Other: $POL"
-        for IFDIR in $ROOT$STATEDIR/$POL; do
-            test -d "$IFDIR" -a \
-                 -d "$SYSFSDIR/${IFDIR##*/}" || continue
-            # proceed every interface we find with this match
-            manage_interfaceconfig MANAGED_INTERFACES "$IFDIR" "$_NETCONFIG_DNS_RANKING"
-        done
+        handle_normal_policy "$POL" "$_NETCONFIG_DNS_RANKING"
     ;;
     esac
 done
