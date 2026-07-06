@@ -65,16 +65,6 @@ function list_find()
     return 1
 }
 
-function list_uniq()
-{
-    local item list=()
-    for item in "$@" ; do
-        list_find "$item" "${list[@]}" && continue
-        list+=("$item")
-    done
-    echo "${list[@]}"
-}
-
 function interface_get_index()
 {
     local ifname="$1"
