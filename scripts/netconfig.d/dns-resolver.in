@@ -322,8 +322,8 @@ if [ "$NETCONFIG_DNS_FORWARDER" != "resolver" -a \
     then
         if test "x$NETCONFIG_DNS_FORWARDER" = "xsystemd-resolved" ;
         then
-        # systemd-resolved doesn't bind to localhost, but to another private
-        # address on the loopback device
+            # systemd-resolved doesn't bind to localhost, but to another
+            # private address on the loopback device
             test ${#lns[@]} -le 0 && lns=(127.0.0.53)
         else
             test ${#lns[@]} -le 0 && lns=(127.0.0.1)
@@ -354,8 +354,8 @@ fi
 
 # here we should restart services if needed
 # - glibc resolver   => not applicable to reload anything
-# - systemd resolved => inform systemd-resolved (if running)
-#   about changes we made to /etc/resolv.conf …
+# - systemd resolved => inform systemd-resolved (if running) about changes we
+#                       made to /etc/resolv.conf …
 case $NETCONFIG_DNS_FORWARDER in
 systemd-resolved|resolver)
     systemctl try-reload-or-restart systemd-resolved.service &>/dev/null || :
