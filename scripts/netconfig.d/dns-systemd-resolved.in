@@ -165,6 +165,37 @@ function dns_searchlist_add()
     return 0
 }
 
+function dns_servers_get()
+{
+    local ifname="${1}"
+    local ranking="${2}"
+    local varname="${3}"
+
+    test -n "$ifname" -a \
+         -n "$ranking" -a \
+         -n "$varname" || return 1
+
+    debug "exec dns_servers_get: $ifname $ranking"
+
+    local ifindex=
+    interface_get_index "$ifname" ifindex || return 1
+    [ -n "$ifindex" ] || return 1
+
+
+    local listname="DNS_SERVERS_${ifindex}_${ranking}"
+    eval "[ -n \"\${${listname}+x}\" ] || declare -g -a ${listname}"
+    declare -n ranked_servers="$listname"
+
+    declare -n servers_out="$varname"
+    if [ 0 -ne "${#ranked_servers[@]}" ] ; then
+        servers_out+=("${ranked_servers[@]}")
+    fi
+
+    debug "exec dns_servers_get: $ifname $ranking"
+
+    return 0
+}
+
 function manage_systemd_resolved()
 {
     local iflist=("$@")
