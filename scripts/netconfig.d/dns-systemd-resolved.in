@@ -274,11 +274,11 @@ function get_dns_settings()
 
     get_variable "DNSSEARCH" "$cfg"
     if [ -n "$DNSSEARCH" ]; then
-        read -a -r DNS_SEARCHLIST <<< "$DNSSEARCH"
+        read -r -a DNS_SEARCHLIST <<< "$DNSSEARCH"
     else
         get_variable "DNSDOMAIN" "$cfg"
         if [ -n "$DNSDOMAIN" ]; then
-            read -a -r DNS_SEARCHLIST <<< "$DNSDOMAIN"
+            read -r -a DNS_SEARCHLIST <<< "$DNSDOMAIN"
         else
             # FIXME: Why only segment y xxx.yyy. ??
             local H=$HOSTNAME
@@ -287,7 +287,7 @@ function get_dns_settings()
             HOSTNAME="${HOSTNAME%.}"
             if [ -n "$HOSTNAME" -a -n "${HOSTNAME#*.}" \
                  -a "${HOSTNAME#*.}" != "${HOSTNAME}" ] ; then
-                read -a -r DNS_SEARCHLIST <<< "${HOSTNAME#*.}"
+                read -r -a DNS_SEARCHLIST <<< "${HOSTNAME#*.}"
             fi
             HOSTNAME=$H
         fi
@@ -298,7 +298,7 @@ function get_dns_settings()
     # Interface specific server list
     get_variable "DNSSERVERS" "$cfg"
     if [ -n "$DNSSERVERS" ]; then
-        read -a -r DNS_SERVERS <<< "$DNSSERVERS"
+        read -r -a DNS_SERVERS <<< "$DNSSERVERS"
     fi
     unset DNSSERVERS
     dns_servers_add "$ifname" "$idx" "${DNS_SERVERS[@]}"
@@ -338,10 +338,10 @@ function applicable_network_service()
 function handle_static_policy()
 {
     local searchlist
-    read -a -r searchlist <<< "${1:-}"
+    read -r -a searchlist <<< "${1:-}"
 
     local servers
-    read -a -r servers <<< "${2:-}"
+    read -r -a servers <<< "${2:-}"
 
     debug "exec handle_static_policy"
 
