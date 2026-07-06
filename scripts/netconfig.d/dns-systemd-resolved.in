@@ -122,14 +122,14 @@ function dns_servers_add()
 
     debug "exec dns_servers_add: $ifname $ranking"
 
-    test 0 -ne "${#servers[@]}" || return 0
-
     local ifindex=
     if ! interface_get_index "$ifname" ifindex; then
         interface_manage "$ifname" ifindex
     fi
 
     [ -n "$ifindex" ] || return 1
+
+    test 0 -ne "${#servers[@]}" || return 0
 
     eval "DNS_SERVERS_${ifindex}_${ranking}+=(\"\${servers[@]}\")"
 
@@ -149,14 +149,14 @@ function dns_searchlist_add()
 
     debug "exec dns_searchlist_add: $ifname $ranking"
 
-    test 0 -ne "${#searchlist[@]}" || return 0
-
     local ifindex=
     if ! interface_get_index "$ifname" ifindex; then
         interface_manage "$ifname" ifindex
     fi
 
     [ -n "$ifindex" ] || return 1
+
+    test 0 -ne "${#searchlist[@]}" || return 0
 
     eval "DNS_SEARCHLIST_${ifindex}_${ranking}+=(\"\${searchlist[@]}\")"
 
