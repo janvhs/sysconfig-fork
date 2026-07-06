@@ -439,7 +439,7 @@ for POL in $_NETCONFIG_DNS_POLICY; do
             "${NETCONFIG_DNS_STATIC_SERVERS}"
     ;;
     (*)
-        # Get current set of per-interface settings 
+        # Get current set of per-interface settings
         debug "Other: $POL"
         handle_normal_policy "$POL" "$_NETCONFIG_DNS_RANKING"
     ;;
