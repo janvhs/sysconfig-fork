@@ -304,28 +304,6 @@ function get_dns_settings()
 
     debug "exit get_dns_settings: $cfg for $ifname"
 
-function manage_interfaceconfig()
-{
-    local ifvar="$1" ; shift
-    local ifdir="$1" ; shift
-    local ifname="${ifdir##*/}"
-    test "x$ifvar" != x -a "x$ifdir" != x || return 1
-    test "x$ifname" != x -a -d "$ifdir"   || return 1
-
-    # do not send per interface settings for loopback
-    test "x$ifname" != xlo                || return 0
-
-    local iflist=(${!ifvar})
-    # just in case, handle each interface once only
-    list_find "$ifname" "${iflist[@]}" && return 0
-
-    debug "exec manage_interfaceconfig: $ifdir for $ifname"
-    for cfg in `ls -X -r "$ifdir/" 2>/dev/null`; do
-        get_dns_settings ${#iflist[@]} "$ifdir/$cfg" "$ifname" "$@" || return 1
-    done
-    iflist+=("$ifname")
-    eval "${ifvar}='${iflist[@]}'"
-    debug "exit manage_interfaceconfig: $ifdir for $ifname"
     return 0
 }
 
