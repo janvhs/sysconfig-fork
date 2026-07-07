@@ -320,7 +320,7 @@ if [ "$NETCONFIG_DNS_FORWARDER" != "resolver" -a \
     # fallback requires a localhost address, set when needed
     if  test "$NETCONFIG_DNS_FORWARDER_FALLBACK" = yes ;
     then
-        if test "x$NETCONFIG_DNS_FORWARDER" = "xsystemd-resolved" ;
+        if test "x$NETCONFIG_DNS_FORWARDER" = "xsystemd" ;
         then
             # systemd-resolved doesn't bind to localhost, but to another
             # private address on the loopback device
@@ -357,7 +357,7 @@ fi
 # - systemd resolved => inform systemd-resolved (if running) about changes we
 #                       made to /etc/resolv.conf …
 case $NETCONFIG_DNS_FORWARDER in
-systemd-resolved|resolver)
+systemd|resolver)
     systemctl try-reload-or-restart systemd-resolved.service &>/dev/null || :
 ;;
 esac
