@@ -427,7 +427,7 @@ function handle_static_fallback_policy()
 # *********************
 
 [ "$NETCONFIG_DNS_FORWARDER" != "systemd" ] && exit 0
-applicable_network_service                           || exit 0
+applicable_network_service                  || exit 0
 
 if ! [ -e "$RESOLVECTL" ] ; then
     debug "$RESOLVECTL does not exist"
