@@ -475,8 +475,8 @@ for POL in $_NETCONFIG_DNS_POLICY; do
     shopt -o -u noglob
     case "$POL" in
     (NetworkManager)
-        # NetworkManager sends per interface settings to systemd-resolved by default,
-        # static settings are handled by the dns-resolver netconfig module.
+        # NetworkManager sends per interface settings to systemd-resolved by default
+        debug "Ignoring policy NetworkManager"
     ;;
     (STATIC)
         debug "Keep Static"
