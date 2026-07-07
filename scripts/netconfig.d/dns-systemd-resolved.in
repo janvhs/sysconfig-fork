@@ -383,6 +383,45 @@ function handle_normal_policy()
     debug "exit handle_normal_policy: $policy"
 }
 
+function handle_static_fallback_policy()
+{
+    local static_searchlist
+    read -r -a static_searchlist <<< "${1:-}"
+
+    local static_servers
+    read -r -a static_servers <<< "${2:-}"
+
+    debug "exec handle_static_fallback_policy"
+
+    for ifdir in "${ROOT}${STATEDIR}/"*; do
+        local ifname="${ifdir##*/}"
+
+        test "$ifname" != "lo" -a \
+             -d "$ifdir" -a \
+             -d "$SYSFSDIR/$ifname" || continue
+
+        declare -a ifservers
+        dns_servers_get "$ifname" 0 ifservers
+        dns_servers_get "$ifname" 1 ifservers
+
+        if [ 0 -eq "${#ifservers[@]}" ] ; then
+            dns_servers_add "$ifname" 2 "${static_servers[@]}"
+        fi
+
+        declare -a ifdomains
+        dns_searchlist_get "$ifname" 0 ifdomains
+        dns_searchlist_get "$ifname" 1 ifdomains
+
+        if [ 0 -eq "${#ifdomains[@]}" ] ; then
+            dns_searchlist_add "$ifname" 2 "${static_searchlist[@]}"
+        fi
+    done
+
+    debug "exit handle_static_fallback_policy"
+
+    return 0
+}
+
 # *********************
 # EXECUTION STARTS HERE
 # *********************
@@ -427,6 +466,7 @@ if [ -z "$_NETCONFIG_DNS_POLICY" ]; then
     exit 0;
 fi
 
+sf=0
 _g=1
 # disable filename glob expansion if needed
 shopt -o -q noglob || _g=0
@@ -434,7 +474,7 @@ shopt -o -s noglob
 for POL in $_NETCONFIG_DNS_POLICY; do
     shopt -o -u noglob
     case "$POL" in
-    (NetworkManager|STATIC_FALLBACK)
+    (NetworkManager)
         # NetworkManager sends per interface settings to systemd-resolved by default,
         # static settings are handled by the dns-resolver netconfig module.
     ;;
@@ -443,6 +483,10 @@ for POL in $_NETCONFIG_DNS_POLICY; do
         handle_static_policy \
             "${NETCONFIG_DNS_STATIC_SEARCHLIST}" \
             "${NETCONFIG_DNS_STATIC_SERVERS}"
+    ;;
+    (STATIC_FALLBACK)
+        debug "Static Fallback"
+        sf=1
     ;;
     (*)
         # Get current set of per-interface settings
@@ -455,6 +499,12 @@ if [ $_g -eq 0 ] ; then
     shopt -o -u noglob
 else
     shopt -o -s noglob
+fi
+
+if [ 1 -eq "$sf" ]; then
+    handle_static_fallback_policy \
+            "${NETCONFIG_DNS_STATIC_SEARCHLIST}" \
+            "${NETCONFIG_DNS_STATIC_SERVERS}"
 fi
 
 manage_systemd_resolved || exit 1
