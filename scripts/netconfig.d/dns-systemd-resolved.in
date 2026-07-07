@@ -110,7 +110,7 @@ function dns_servers_add()
     test -n "$ifname" -a \
          -n "$ranking" || return 1
 
-    debug "exec dns_servers_add: $ifname $ranking"
+    debug "exec dns_servers_add: $ifname $ranking to ${servers[*]}"
 
     local ifindex=
     if ! interface_get_index "$ifname" ifindex; then
@@ -123,7 +123,7 @@ function dns_servers_add()
 
     eval "DNS_SERVERS_${ifindex}_${ranking}+=(\"\${servers[@]}\")"
 
-    debug "exit dns_servers_add: $ifname $ranking"
+    debug "exit dns_servers_add: $ifname $ranking to ${servers[*]}"
 
     return 0
 }
@@ -137,7 +137,7 @@ function dns_searchlist_add()
     test -n "$ifname" -a \
          -n "$ranking" || return 1
 
-    debug "exec dns_searchlist_add: $ifname $ranking"
+    debug "exec dns_searchlist_add: $ifname $ranking to ${servers[*]}"
 
     local ifindex=
     if ! interface_get_index "$ifname" ifindex; then
@@ -150,7 +150,7 @@ function dns_searchlist_add()
 
     eval "DNS_SEARCHLIST_${ifindex}_${ranking}+=(\"\${searchlist[@]}\")"
 
-    debug "exit dns_searchlist_add: $ifname $ranking"
+    debug "exit dns_searchlist_add: $ifname $ranking to ${servers[*]}"
 
     return 0
 }
@@ -379,7 +379,6 @@ function handle_normal_policy()
             get_dns_settings "$cfg" "$ifname" "$@"
         done
     done
-
 
     debug "exit handle_normal_policy: $policy"
 }
