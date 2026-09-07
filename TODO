@@ -1,0 +1,2 @@
+Sync default route in systemd-plugin -> resolvectl set default eth0
+src/core/dns/nm-dns-systemd-resolved.c

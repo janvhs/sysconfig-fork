@@ -1,0 +1,24 @@
+Support systemd-resolved as a DNS forwarder.  The usage of systemd-resolved
+is officially supported since SLE 15 SP6, but netconfig was missing an
+official integration.
+
+Supporting systemd-resolved allows the user to configure DNS over TLS
+without dropping netconfig.  A configuration example is provided in
+[netconfig(8)](man:netconfig(8)).
+
+When opting into using systemd-resolved, netconfig is used to configure DNS
+servers and DNS search domains on a per-interface basis.  Only interfaces
+managed by netconfig will be configured and the loopback interface will
+never be configured.
+
+Like our other modules the new systemd DNS module supports the usual
+dynamic and static configuration as well as the standard and custom
+netconfig DNS policies.  The policy "NetworkManager" will be ignored, as
+NetworkManager integrates with systemd-resolved by itself.  When
+NetworkManager is used as the network service, the module will not be run
+and exit successfully.
+
+When changes to /etc/resolv.conf are made, systemd-resolved will be
+reloaded and re-read its configuration files.  On older systems a restart
+is required, as reloading the configuration files is only supported since
+[systemd v256](https://github.com/systemd/systemd/commit/d30d0b04aed25db711cff8d3b035acc39dba4b57).
